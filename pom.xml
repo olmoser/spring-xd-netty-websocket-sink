@@ -33,7 +33,6 @@
             <groupId>org.springframework.integration</groupId>
             <artifactId>spring-integration-java-dsl</artifactId>
             <version>1.0.1.RELEASE</version>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
