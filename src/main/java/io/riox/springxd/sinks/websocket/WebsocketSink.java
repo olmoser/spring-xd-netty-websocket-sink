@@ -9,13 +9,17 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.config.EnableIntegration;
+import org.springframework.integration.dsl.Channels;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
+import org.springframework.integration.dsl.channel.MessageChannelSpec;
+import org.springframework.integration.dsl.support.Function;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 
 import javax.annotation.PostConstruct;
 import javax.net.ssl.SSLException;
+
 import java.security.cert.CertificateException;
 import java.util.concurrent.Executors;
 
@@ -57,9 +61,14 @@ public class WebsocketSink {
 
 	@Bean
 	IntegrationFlow webSocketFlow() {
+		Function<Channels, MessageChannelSpec<?, ?>> func = new Function<Channels, MessageChannelSpec<?,?>>() {
+			public MessageChannelSpec<?, ?> apply(Channels c) {
+				return c.executor(Executors.newCachedThreadPool());
+			}
+		};
 		return IntegrationFlows
 				.from(input())
-				.channel(c -> c.executor(Executors.newCachedThreadPool()))
+				.channel(func)
 				.handle(webSocketOutboundAdapter()).get();
 	}
 

@@ -48,7 +48,7 @@ public class NettyWebSocketServer {
 
 	static final Logger log = LoggerFactory.getLogger(NettyWebSocketServer.class);
 
-	static final List<Channel> channels = Collections.synchronizedList(new ArrayList<>());
+	static final List<Channel> channels = Collections.synchronizedList(new ArrayList<Channel>());
 
 	public static final int BOSS_GROUP_THREADS = 1;
 
