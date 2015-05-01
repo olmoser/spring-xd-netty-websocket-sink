@@ -25,15 +25,18 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.security.cert.CertificateException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.annotation.PreDestroy;
 import javax.net.ssl.SSLException;
-import java.security.cert.CertificateException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * simple websocket server implementation based on netty
@@ -41,6 +44,8 @@ import java.util.List;
  *
  * @see <a href="https://github.com/netty/netty/tree/master/example/src/main/java/io/netty/example/http/websocketx/server">netty websocket server example</a>
  *
+ * @author omoser
+ * @author whummer
  */
 public class NettyWebSocketServer {
 
@@ -48,7 +53,7 @@ public class NettyWebSocketServer {
 
 	static final Logger log = LoggerFactory.getLogger(NettyWebSocketServer.class);
 
-	static final List<Channel> channels = Collections.synchronizedList(new ArrayList<Channel>());
+	static final Map<String,List<Channel>> pathToChannels = Collections.synchronizedMap(new HashMap<String,List<Channel>>());
 
 	public static final int BOSS_GROUP_THREADS = 1;
 

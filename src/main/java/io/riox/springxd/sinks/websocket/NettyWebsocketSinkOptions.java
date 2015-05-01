@@ -13,6 +13,8 @@ public class NettyWebsocketSinkOptions {
 
 	private int port = DEFAULT_PORT;
 
+	private String path;
+
 	private boolean ssl;
 
 	public int getPort() {
@@ -22,6 +24,15 @@ public class NettyWebsocketSinkOptions {
 	@ModuleOption("the port to listen to")
 	public void setPort(int port) {
 		this.port = port;
+	}
+
+	public String getPath() {
+		return path;
+	}
+
+	@ModuleOption("the path to use for this sink")
+	public void setPath(String path) {
+		this.path = path;
 	}
 
 	public boolean isSsl() {
