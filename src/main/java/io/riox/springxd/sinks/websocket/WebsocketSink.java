@@ -4,6 +4,7 @@ import io.netty.channel.Channel;
 
 import java.security.cert.CertificateException;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -49,8 +50,6 @@ public class WebsocketSink {
 	private MessageHandler handler;
 	private DirectChannel channel;
 
-	private static final Map<Integer,NettyWebSocketServer> SERVERS = new ConcurrentHashMap<>();
-
 	protected static final String MSG_HEADER_PATH = "__path";
 
 	@PostConstruct
@@ -60,17 +59,32 @@ public class WebsocketSink {
 		log.info("Started netty server on port {}", port);
 	}
 
+	@SuppressWarnings("unchecked")
+	private synchronized Map<Integer,NettyWebSocketServer> getServers() {
+		String key = "__NETTY_WEBSOCKET_SERVERS__";
+		if(!System.getProperties().contains(key)) {
+			System.getProperties().put(key, new ConcurrentHashMap<Integer,NettyWebSocketServer>());
+		}
+		return (Map<Integer, NettyWebSocketServer>) System.getProperties().get(key);
+	}
+
 	@Bean
 	synchronized NettyWebSocketServer webSocketServerNetty() throws InterruptedException, CertificateException, SSLException {
-		if(!SERVERS.containsKey(port)) {
+		Map<Integer, NettyWebSocketServer> servers = getServers();
+		if(!servers.containsKey(port)) {
 			NettyWebSocketServer server = new NettyWebSocketServer(port);
-			server.run();
-			SERVERS.put(port, server);
+			servers.put(port, server);
+			try {
+				server.run();
+			} catch (Exception e) {
+				log.error("Cannot run Websocket server. Probably already running?", e);
+			}
 		}
-		if(!NettyWebSocketServer.pathToChannels.containsKey(path)) {
-			NettyWebSocketServer.pathToChannels.put(path, new LinkedList<Channel>());
+		Map<String,List<Channel>> pathsToChannels = NettyWebSocketServer.getPathsToChannels();
+		if(!pathsToChannels.containsKey(path)) {
+			pathsToChannels.put(path, new LinkedList<Channel>());
 		}
-		return SERVERS.get(port);
+		return servers.get(port);
 	}
 
 	@Bean

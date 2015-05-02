@@ -53,8 +53,6 @@ public class NettyWebSocketServer {
 
 	static final Logger log = LoggerFactory.getLogger(NettyWebSocketServer.class);
 
-	static final Map<String,List<Channel>> pathToChannels = Collections.synchronizedMap(new HashMap<String,List<Channel>>());
-
 	public static final int BOSS_GROUP_THREADS = 1;
 
 	NettyWebSocketServerInitializer nettyWebSocketServerInitializer;
@@ -77,6 +75,17 @@ public class NettyWebSocketServer {
 
 	public NettyWebSocketServer(int port) {
 		this.port = port;
+	}
+
+	@SuppressWarnings("unchecked")
+	static synchronized Map<String,List<Channel>> getPathsToChannels() {
+		String key = "__NETTY_WEBSOCKET_PATHS_TO_CHANNELS__";
+		Map<String,List<Channel>> map = (Map<String,List<Channel>>) System.getProperties().get(key);
+		if(map == null) {
+			map = Collections.synchronizedMap(new HashMap<String,List<Channel>>());
+			System.getProperties().put(key, map);
+		}
+		return map;
 	}
 
 	public void run() throws SSLException, CertificateException, InterruptedException {

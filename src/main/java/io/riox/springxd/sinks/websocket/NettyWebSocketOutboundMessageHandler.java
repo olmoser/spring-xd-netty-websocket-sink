@@ -1,5 +1,8 @@
 package io.riox.springxd.sinks.websocket;
 
+import java.util.List;
+import java.util.Map;
+
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 
@@ -36,7 +39,8 @@ public class NettyWebSocketOutboundMessageHandler extends AbstractMessageHandler
 	protected void handleMessageInternal(Message<?> message) throws Exception {
 		SimpMessageHeaderAccessor headers = SimpMessageHeaderAccessor.wrap(message);
 		headers.setMessageTypeIfNotSet(SimpMessageType.MESSAGE);
-		for (Channel channel : NettyWebSocketServer.pathToChannels.get(path)) {
+		Map<String,List<Channel>> pathsToChannels = NettyWebSocketServer.getPathsToChannels();
+		for (Channel channel : pathsToChannels.get(path)) {
 			String messagePayload = message.getPayload().toString();
 			log.trace("Writing message {} to channel {}", messagePayload, channel.localAddress());
 			channel.write(new TextWebSocketFrame(messagePayload));

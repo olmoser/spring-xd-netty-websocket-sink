@@ -41,6 +41,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
 import io.netty.util.CharsetUtil;
 
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,7 +105,8 @@ public class NettyWebSocketServerHandler extends SimpleChannelInboundHandler<Obj
 			WebSocketServerHandshakerFactory.sendUnsupportedVersionResponse(ctx.channel());
 		} else {
 			handshaker.handshake(ctx.channel(), req);
-			List<Channel> existing = NettyWebSocketServer.pathToChannels.get(req.getUri());
+			Map<String,List<Channel>> pathsToChannels = NettyWebSocketServer.getPathsToChannels();
+			List<Channel> existing = pathsToChannels.get(req.getUri());
 			if(existing == null) {
 				sendHttpResponse(ctx, req, new DefaultFullHttpResponse(HTTP_1_1, FORBIDDEN));
 			} else {
