@@ -25,15 +25,18 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.security.cert.CertificateException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.annotation.PreDestroy;
 import javax.net.ssl.SSLException;
-import java.security.cert.CertificateException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * simple websocket server implementation based on netty
@@ -41,14 +44,14 @@ import java.util.List;
  *
  * @see <a href="https://github.com/netty/netty/tree/master/example/src/main/java/io/netty/example/http/websocketx/server">netty websocket server example</a>
  *
+ * @author omoser
+ * @author whummer
  */
 public class NettyWebSocketServer {
 
 	public static final int DEFAULT_PORT = 9292;
 
 	static final Logger log = LoggerFactory.getLogger(NettyWebSocketServer.class);
-
-	static final List<Channel> channels = Collections.synchronizedList(new ArrayList<>());
 
 	public static final int BOSS_GROUP_THREADS = 1;
 
@@ -72,6 +75,17 @@ public class NettyWebSocketServer {
 
 	public NettyWebSocketServer(int port) {
 		this.port = port;
+	}
+
+	@SuppressWarnings("unchecked")
+	static synchronized Map<String,List<Channel>> getPathsToChannels() {
+		String key = "__NETTY_WEBSOCKET_PATHS_TO_CHANNELS__";
+		Map<String,List<Channel>> map = (Map<String,List<Channel>>) System.getProperties().get(key);
+		if(map == null) {
+			map = Collections.synchronizedMap(new HashMap<String,List<Channel>>());
+			System.getProperties().put(key, map);
+		}
+		return map;
 	}
 
 	public void run() throws SSLException, CertificateException, InterruptedException {

@@ -1,5 +1,16 @@
 package io.riox.springxd.sinks.websocket;
 
+import io.netty.channel.Channel;
+
+import java.security.cert.CertificateException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+
+import javax.annotation.PostConstruct;
+import javax.net.ssl.SSLException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,16 +20,16 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.config.EnableIntegration;
+import org.springframework.integration.dsl.Channels;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
+import org.springframework.integration.dsl.channel.MessageChannelSpec;
+import org.springframework.integration.dsl.support.Function;
+import org.springframework.integration.support.MessageBuilder;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
-
-import javax.annotation.PostConstruct;
-import javax.net.ssl.SSLException;
-import java.security.cert.CertificateException;
-import java.util.concurrent.Executors;
-
+import org.springframework.messaging.MessagingException;
 
 @Configuration
 @EnableIntegration
@@ -30,36 +41,90 @@ public class WebsocketSink {
 	@Value("${port}")
 	int port;
 
+	@Value("${path}")
+	String path;
+
 	@Value("${ssl}")
 	boolean ssl;
+
+	private MessageHandler handler;
+	private DirectChannel channel;
+
+	protected static final String MSG_HEADER_PATH = "__path";
 
 	@PostConstruct
 	public void init() throws InterruptedException, CertificateException, SSLException {
 		log.info("Starting netty websocket server...");
-		webSocketServerNetty().run();
+		webSocketServerNetty();
 		log.info("Started netty server on port {}", port);
 	}
 
+	@SuppressWarnings("unchecked")
+	private synchronized Map<Integer,NettyWebSocketServer> getServers() {
+		String key = "__NETTY_WEBSOCKET_SERVERS__";
+		if(!System.getProperties().contains(key)) {
+			System.getProperties().put(key, new ConcurrentHashMap<Integer,NettyWebSocketServer>());
+		}
+		return (Map<Integer, NettyWebSocketServer>) System.getProperties().get(key);
+	}
+
 	@Bean
-	NettyWebSocketServer webSocketServerNetty() {
-		return new NettyWebSocketServer(port);
+	synchronized NettyWebSocketServer webSocketServerNetty() throws InterruptedException, CertificateException, SSLException {
+		Map<Integer, NettyWebSocketServer> servers = getServers();
+		if(!servers.containsKey(port)) {
+			NettyWebSocketServer server = new NettyWebSocketServer(port);
+			servers.put(port, server);
+			try {
+				server.run();
+			} catch (Exception e) {
+				log.error("Cannot run Websocket server. Probably already running?", e);
+			}
+		}
+		Map<String,List<Channel>> pathsToChannels = NettyWebSocketServer.getPathsToChannels();
+		if(!pathsToChannels.containsKey(path)) {
+			pathsToChannels.put(path, new LinkedList<Channel>());
+		}
+		return servers.get(port);
 	}
 
 	@Bean
 	MessageHandler webSocketOutboundAdapter() {
-		return new NettyWebSocketOutboundMessageHandler();
+		if(handler == null) {
+			final MessageHandler h2 = new NettyWebSocketOutboundMessageHandler(path);
+			handler = new MessageHandler() {
+				public void handleMessage(Message<?> msg) throws MessagingException {
+					if(path.equals(msg.getHeaders().get(MSG_HEADER_PATH))) {
+						h2.handleMessage(msg);
+					}
+				}
+			};
+		}
+		return handler;
 	}
 
 	@Bean
 	MessageChannel input() {
-		return new DirectChannel();
+		if(channel == null) {
+			channel = new DirectChannel() {
+				protected boolean doSend(Message<?> message, long timeout) {
+					Message<?> newMsg = MessageBuilder.fromMessage(message).setHeader(MSG_HEADER_PATH, path).build();
+					return super.doSend(newMsg, timeout);
+				}
+			};
+		}
+		return channel;
 	}
 
 	@Bean
 	IntegrationFlow webSocketFlow() {
+		Function<Channels, MessageChannelSpec<?, ?>> func = new Function<Channels, MessageChannelSpec<?,?>>() {
+			public MessageChannelSpec<?, ?> apply(Channels c) {
+				return c.executor(Executors.newCachedThreadPool());
+			}
+		};
 		return IntegrationFlows
 				.from(input())
-				.channel(c -> c.executor(Executors.newCachedThreadPool()))
+				.channel(func)
 				.handle(webSocketOutboundAdapter()).get();
 	}
 

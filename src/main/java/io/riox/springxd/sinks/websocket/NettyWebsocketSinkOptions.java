@@ -10,8 +10,11 @@ import org.springframework.xd.module.options.spi.ModuleOption;
 public class NettyWebsocketSinkOptions {
 
 	public static final int DEFAULT_PORT = 9292;
+	public static final String DEFAULT_PATH = "/";
 
 	private int port = DEFAULT_PORT;
+
+	private String path = DEFAULT_PATH;
 
 	private boolean ssl;
 
@@ -22,6 +25,15 @@ public class NettyWebsocketSinkOptions {
 	@ModuleOption("the port to listen to")
 	public void setPort(int port) {
 		this.port = port;
+	}
+
+	public String getPath() {
+		return path;
+	}
+
+	@ModuleOption("the path to use for this sink")
+	public void setPath(String path) {
+		this.path = path;
 	}
 
 	public boolean isSsl() {
