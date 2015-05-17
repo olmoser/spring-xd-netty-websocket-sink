@@ -56,7 +56,7 @@ public class WebsocketSink {
 	@PostConstruct
 	public void init() throws InterruptedException, CertificateException, SSLException {
 		log.info("Starting netty websocket server...");
-		webSocketServerNetty();
+		startWebsocketServerNetty();
 		log.info("Started netty server on port {}", port);
 	}
 
@@ -71,8 +71,8 @@ public class WebsocketSink {
 		}
 	}
 
-	@Bean
-	synchronized NettyWebSocketServer webSocketServerNetty() throws 
+//	@Bean
+	synchronized Object startWebsocketServerNetty() throws 
 			InterruptedException, CertificateException, SSLException {
 		Map<Integer, NettyWebSocketServer> servers = getServers();
 		synchronized (servers) {
