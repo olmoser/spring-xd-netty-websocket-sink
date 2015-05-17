@@ -15,6 +15,7 @@
  */
 package io.riox.springxd.sinks.websocket;
 
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
@@ -22,27 +23,32 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.ssl.SslContext;
 
-public class NettyWebSocketServerInitializer extends ChannelInitializer<SocketChannel> {
+public class NettyWebSocketServerInitializer extends
+		ChannelInitializer<SocketChannel> {
 
-    private final SslContext sslCtx;
+	private final SslContext sslCtx;
+	private static final String HANDLER_CLASS = NettyWebSocketServerHandler.class
+			.getName();
 
-    public NettyWebSocketServerInitializer(SslContext sslCtx) {
-        this.sslCtx = sslCtx;
-    }
+	public NettyWebSocketServerInitializer(SslContext sslCtx) {
+		this.sslCtx = sslCtx;
+	}
 
 	public NettyWebSocketServerInitializer() {
 		sslCtx = null;
 	}
 
 	@Override
-    public void initChannel(SocketChannel ch) throws Exception {
-        ChannelPipeline pipeline = ch.pipeline();
-        if (sslCtx != null) {
-            pipeline.addLast(sslCtx.newHandler(ch.alloc()));
-        }
-        pipeline.addLast(new HttpServerCodec());
-        pipeline.addLast(new HttpObjectAggregator(65536));
-        pipeline.addLast(new NettyWebSocketServerHandler(sslCtx != null));
-        //pipeline.addLast(new NettyWebSocketHttpServerHandler(sslCtx != null));
-    }
+	public void initChannel(SocketChannel ch) throws Exception {
+		ChannelPipeline pipeline = ch.pipeline();
+		if (sslCtx != null) {
+			pipeline.addLast(sslCtx.newHandler(ch.alloc()));
+		}
+		pipeline.addLast(new HttpServerCodec());
+		pipeline.addLast(new HttpObjectAggregator(65536));
+		/* need to use reflection here, due to Spring XD classloader isolation */
+		Object handler = Class.forName(HANDLER_CLASS)
+				.getConstructor(boolean.class).newInstance(sslCtx != null);
+		pipeline.addLast((ChannelHandler)handler);
+	}
 }

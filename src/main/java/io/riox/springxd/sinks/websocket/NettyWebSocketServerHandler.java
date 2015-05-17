@@ -19,6 +19,7 @@ import static io.netty.handler.codec.http.HttpHeaders.Names.HOST;
 import static io.netty.handler.codec.http.HttpMethod.GET;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
+import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -108,7 +109,7 @@ public class NettyWebSocketServerHandler extends SimpleChannelInboundHandler<Obj
 			Map<String,List<Channel>> pathsToChannels = NettyWebSocketServer.getPathsToChannels();
 			List<Channel> existing = pathsToChannels.get(req.getUri());
 			if(existing == null) {
-				sendHttpResponse(ctx, req, new DefaultFullHttpResponse(HTTP_1_1, FORBIDDEN));
+				sendHttpResponse(ctx, req, new DefaultFullHttpResponse(HTTP_1_1, NOT_FOUND));
 			} else {
 				existing.add(ctx.channel());
 			}

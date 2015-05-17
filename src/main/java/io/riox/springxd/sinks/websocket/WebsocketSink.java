@@ -51,40 +51,46 @@ public class WebsocketSink {
 	private DirectChannel channel;
 
 	protected static final String MSG_HEADER_PATH = "__path";
+	static final String KEY_WEBSOCKET_SERVERS = "__NETTY_WEBSOCKET_SERVERS__";
 
 	@PostConstruct
 	public void init() throws InterruptedException, CertificateException, SSLException {
 		log.info("Starting netty websocket server...");
-		webSocketServerNetty();
+		startWebsocketServerNetty();
 		log.info("Started netty server on port {}", port);
 	}
 
 	@SuppressWarnings("unchecked")
-	private synchronized Map<Integer,NettyWebSocketServer> getServers() {
-		String key = "__NETTY_WEBSOCKET_SERVERS__";
-		if(!System.getProperties().contains(key)) {
-			System.getProperties().put(key, new ConcurrentHashMap<Integer,NettyWebSocketServer>());
+	private Map<Integer,NettyWebSocketServer> getServers() {
+		synchronized (System.class) {
+			if(!System.getProperties().containsKey(KEY_WEBSOCKET_SERVERS)) {
+				System.getProperties().put(KEY_WEBSOCKET_SERVERS, 
+						new ConcurrentHashMap<Integer,NettyWebSocketServer>());
+			}
+			return (Map<Integer, NettyWebSocketServer>) System.getProperties().get(KEY_WEBSOCKET_SERVERS);
 		}
-		return (Map<Integer, NettyWebSocketServer>) System.getProperties().get(key);
 	}
 
-	@Bean
-	synchronized NettyWebSocketServer webSocketServerNetty() throws InterruptedException, CertificateException, SSLException {
+//	@Bean
+	synchronized Object startWebsocketServerNetty() throws 
+			InterruptedException, CertificateException, SSLException {
 		Map<Integer, NettyWebSocketServer> servers = getServers();
-		if(!servers.containsKey(port)) {
-			NettyWebSocketServer server = new NettyWebSocketServer(port);
-			servers.put(port, server);
-			try {
-				server.run();
-			} catch (Exception e) {
-				log.error("Cannot run Websocket server. Probably already running?", e);
+		synchronized (servers) {
+			if(!servers.containsKey(port)) {
+				NettyWebSocketServer server = new NettyWebSocketServer(port);
+				servers.put(port, server);
+				try {
+					server.run();
+				} catch (Exception e) {
+					log.error("Cannot run Websocket server. Probably already running?", e);
+				}
 			}
+			Map<String,List<Channel>> pathsToChannels = NettyWebSocketServer.getPathsToChannels();
+			if(!pathsToChannels.containsKey(path)) {
+				pathsToChannels.put(path, new LinkedList<Channel>());
+			}
+			return servers.get(port);
 		}
-		Map<String,List<Channel>> pathsToChannels = NettyWebSocketServer.getPathsToChannels();
-		if(!pathsToChannels.containsKey(path)) {
-			pathsToChannels.put(path, new LinkedList<Channel>());
-		}
-		return servers.get(port);
 	}
 
 	@Bean
